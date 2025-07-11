@@ -1,128 +1,164 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Catch The Box Game</title>
+  <meta charset="UTF-8" />
+  <title>Flappy Image Game</title>
   <style>
     body {
       margin: 0;
-      padding: 0;
-      font-family: Arial, sans-serif;
-      background: #1e1e2f;
-      color: #fff;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
+      overflow: hidden;
+      background: skyblue;
+      font-family: sans-serif;
+    }
+
+    canvas {
+      display: block;
+      margin: 0 auto;
+      background: #87CEEB;
+      border: 3px solid #000;
     }
 
     h1 {
-      margin-top: 20px;
-    }
-
-    #gameArea {
-      position: relative;
-      width: 90vw;
-      height: 70vh;
-      border: 3px solid #fff;
-      margin-top: 30px;
-      background-color: #2c2f4a;
-      overflow: hidden;
-    }
-
-    #box {
-      width: 50px;
-      height: 50px;
-      background-color: #ff4b2b;
-      position: absolute;
-      cursor: pointer;
-      border-radius: 8px;
-      transition: 0.2s;
-    }
-
-    #scoreBoard {
-      margin-top: 20px;
-      font-size: 1.5rem;
-    }
-
-    #startBtn {
-      padding: 10px 30px;
-      font-size: 1.2rem;
-      background: #00b894;
+      text-align: center;
       color: white;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
       margin-top: 10px;
-    }
-
-    #startBtn:hover {
-      background-color: #00cec9;
     }
   </style>
 </head>
 <body>
-
-  <h1>Catch The Box 🎯</h1>
-  <button id="startBtn" onclick="startGame()">Start Game</button>
-  <div id="scoreBoard">Score: 0 | Time Left: 30s</div>
-  <div id="gameArea">
-    <div id="box" onclick="boxClicked()"></div>
-  </div>
+  <h1>Flappy Image Game 🎮</h1>
+  <canvas id="gameCanvas" width="480" height="640"></canvas>
 
   <script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+
+    // ✅ Load bird image (PNG)
+    const birdImg = new Image();
+    birdImg.src = "Img.png"; // <-- your updated image file
+
+    // ✅ Load obstacle image
+    const pipeImg = new Image();
+    pipeImg.src = "Obstacle.png";
+
+    let bird = {
+      x: 100,
+      y: 200,
+      width: 40,
+      height: 40,
+      gravity: 0.6,
+      lift: -10,
+      velocity: 0
+    };
+
+    let pipes = [];
     let score = 0;
-    let timeLeft = 30;
-    let timer;
-    let gameRunning = false;
+    let gameOver = false;
 
-    const box = document.getElementById('box');
-    const gameArea = document.getElementById('gameArea');
-    const scoreBoard = document.getElementById('scoreBoard');
-    const startBtn = document.getElementById('startBtn');
+    document.addEventListener("keydown", jump);
+    canvas.addEventListener("click", jump);
 
-    function randomPosition() {
-      const maxX = gameArea.clientWidth - 50;
-      const maxY = gameArea.clientHeight - 50;
-
-      const x = Math.floor(Math.random() * maxX);
-      const y = Math.floor(Math.random() * maxY);
-
-      box.style.left = x + 'px';
-      box.style.top = y + 'px';
+    function jump() {
+      if (!gameOver) bird.velocity = bird.lift;
     }
 
-    function boxClicked() {
-      if (!gameRunning) return;
-      score++;
-      scoreBoard.textContent = `Score: ${score} | Time Left: ${timeLeft}s`;
-      randomPosition();
+    function createPipe() {
+      const gap = 140;
+      const top = Math.random() * (canvas.height - gap - 100) + 20;
+      const bottom = top + gap;
+
+      pipes.push({
+        x: canvas.width,
+        top: top,
+        bottom: bottom,
+        width: 60,
+        passed: false
+      });
     }
 
-    function startGame() {
-      score = 0;
-      timeLeft = 30;
-      gameRunning = true;
-      box.style.display = 'block';
-      randomPosition();
+    function drawBird() {
+      ctx.drawImage(birdImg, bird.x, bird.y, bird.width, bird.height);
+    }
 
-      scoreBoard.textContent = `Score: ${score} | Time Left: ${timeLeft}s`;
+    function drawPipes() {
+      for (let pipe of pipes) {
+        // Top flipped pipe
+        ctx.save();
+        ctx.translate(pipe.x + pipe.width / 2, pipe.top);
+        ctx.scale(1, -1);
+        ctx.drawImage(pipeImg, -pipe.width / 2, 0, pipe.width, 250);
+        ctx.restore();
 
-      timer = setInterval(() => {
-        timeLeft--;
-        scoreBoard.textContent = `Score: ${score} | Time Left: ${timeLeft}s`;
+        // Bottom pipe
+        ctx.drawImage(pipeImg, pipe.x, pipe.bottom, pipe.width, 250);
+      }
+    }
 
-        if (timeLeft <= 0) {
-          clearInterval(timer);
-          gameRunning = false;
-          box.style.display = 'none';
-          alert(`Time's up! 🕒\nYour Score: ${score}`);
+    function checkCollision(pipe) {
+      const birdTop = bird.y;
+      const birdBottom = bird.y + bird.height;
+
+      if (
+        bird.x + bird.width > pipe.x &&
+        bird.x < pipe.x + pipe.width &&
+        (birdTop < pipe.top || birdBottom > pipe.bottom)
+      ) {
+        return true;
+      }
+
+      return false;
+    }
+
+    function update() {
+      if (gameOver) return;
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      bird.velocity += bird.gravity;
+      bird.y += bird.velocity;
+
+      if (bird.y + bird.height > canvas.height || bird.y < 0) {
+        gameOver = true;
+      }
+
+      for (let pipe of pipes) {
+        pipe.x -= 2;
+
+        if (!pipe.passed && pipe.x + pipe.width < bird.x) {
+          score++;
+          pipe.passed = true;
         }
-      }, 1000);
+
+        if (checkCollision(pipe)) {
+          gameOver = true;
+        }
+      }
+
+      pipes = pipes.filter(pipe => pipe.x + pipe.width > 0);
+
+      drawPipes();
+      drawBird();
+
+      ctx.fillStyle = "white";
+      ctx.font = "24px Arial";
+      ctx.fillText("Score: " + score, 20, 30);
+
+      if (!gameOver) {
+        requestAnimationFrame(update);
+      } else {
+        ctx.fillStyle = "red";
+        ctx.font = "36px Arial";
+        ctx.fillText("Game Over", 150, canvas.height / 2);
+      }
     }
 
-    // Hide box at the start
-    box.style.display = 'none';
-  </script>
+    setInterval(() => {
+      if (!gameOver) createPipe();
+    }, 2000);
 
+    birdImg.onload = () => {
+      update();
+    };
+  </script>
 </body>
 </html>
