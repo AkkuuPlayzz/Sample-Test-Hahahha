@@ -4,48 +4,87 @@
   <meta charset="UTF-8" />
   <title>Flappy Image Game</title>
   <style>
-    body {
+    * {
       margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
       overflow: hidden;
-      background: skyblue;
+      background: #87CEEB;
       font-family: sans-serif;
     }
 
     canvas {
       display: block;
-      margin: 0 auto;
       background: #87CEEB;
-      border: 3px solid #000;
+    }
+
+    #startScreen, #gameOverScreen {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.6);
+      color: white;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      z-index: 10;
+    }
+
+    button {
+      padding: 10px 20px;
+      font-size: 18px;
+      margin-top: 20px;
+      cursor: pointer;
+      border: none;
+      border-radius: 8px;
+      background-color: #00ccff;
+      color: white;
     }
 
     h1 {
-      text-align: center;
-      color: white;
-      margin-top: 10px;
+      font-size: 40px;
+      margin-bottom: 10px;
     }
   </style>
 </head>
 <body>
-  <h1>Flappy Image Game 🎮</h1>
-  <canvas id="gameCanvas" width="480" height="640"></canvas>
+  <canvas id="gameCanvas"></canvas>
+
+  <div id="startScreen">
+    <h1>Flappy Image Game 🐦</h1>
+    <button onclick="startGame()">Start Game</button>
+  </div>
+
+  <div id="gameOverScreen" style="display: none;">
+    <h1>Game Over</h1>
+    <p>Your Score: <span id="finalScore">0</span></p>
+    <button onclick="restartGame()">Play Again</button>
+  </div>
 
   <script>
     const canvas = document.getElementById("gameCanvas");
     const ctx = canvas.getContext("2d");
 
-    // ✅ Load bird image (PNG)
-    const birdImg = new Image();
-    birdImg.src = "Img.png"; // <-- your updated image file
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
 
-    // ✅ Load obstacle image
-    const pipeImg = new Image();
+    let birdImg = new Image();
+    birdImg.src = "Img.png";
+
+    let pipeImg = new Image();
     pipeImg.src = "Obstacle.png";
 
     let bird = {
       x: 100,
       y: 200,
-      width: 40,
-      height: 40,
+      width: 50,
+      height: 50,
       gravity: 0.6,
       lift: -10,
       velocity: 0
@@ -54,24 +93,27 @@
     let pipes = [];
     let score = 0;
     let gameOver = false;
+    let gameStarted = false;
 
     document.addEventListener("keydown", jump);
     canvas.addEventListener("click", jump);
 
     function jump() {
-      if (!gameOver) bird.velocity = bird.lift;
+      if (gameStarted && !gameOver) {
+        bird.velocity = bird.lift;
+      }
     }
 
     function createPipe() {
-      const gap = 140;
-      const top = Math.random() * (canvas.height - gap - 100) + 20;
+      const gap = 180;
+      const top = Math.random() * (canvas.height - gap - 200) + 50;
       const bottom = top + gap;
 
       pipes.push({
         x: canvas.width,
         top: top,
         bottom: bottom,
-        width: 60,
+        width: 80,
         passed: false
       });
     }
@@ -82,15 +124,13 @@
 
     function drawPipes() {
       for (let pipe of pipes) {
-        // Top flipped pipe
         ctx.save();
         ctx.translate(pipe.x + pipe.width / 2, pipe.top);
         ctx.scale(1, -1);
-        ctx.drawImage(pipeImg, -pipe.width / 2, 0, pipe.width, 250);
+        ctx.drawImage(pipeImg, -pipe.width / 2, 0, pipe.width, 300);
         ctx.restore();
 
-        // Bottom pipe
-        ctx.drawImage(pipeImg, pipe.x, pipe.bottom, pipe.width, 250);
+        ctx.drawImage(pipeImg, pipe.x, pipe.bottom, pipe.width, 300);
       }
     }
 
@@ -98,19 +138,15 @@
       const birdTop = bird.y;
       const birdBottom = bird.y + bird.height;
 
-      if (
+      return (
         bird.x + bird.width > pipe.x &&
         bird.x < pipe.x + pipe.width &&
         (birdTop < pipe.top || birdBottom > pipe.bottom)
-      ) {
-        return true;
-      }
-
-      return false;
+      );
     }
 
     function update() {
-      if (gameOver) return;
+      if (!gameStarted || gameOver) return;
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -118,11 +154,12 @@
       bird.y += bird.velocity;
 
       if (bird.y + bird.height > canvas.height || bird.y < 0) {
-        gameOver = true;
+        endGame();
+        return;
       }
 
       for (let pipe of pipes) {
-        pipe.x -= 2;
+        pipe.x -= 3;
 
         if (!pipe.passed && pipe.x + pipe.width < bird.x) {
           score++;
@@ -130,7 +167,8 @@
         }
 
         if (checkCollision(pipe)) {
-          gameOver = true;
+          endGame();
+          return;
         }
       }
 
@@ -141,24 +179,47 @@
 
       ctx.fillStyle = "white";
       ctx.font = "24px Arial";
-      ctx.fillText("Score: " + score, 20, 30);
+      ctx.fillText("Score: " + score, 20, 40);
 
-      if (!gameOver) {
-        requestAnimationFrame(update);
-      } else {
-        ctx.fillStyle = "red";
-        ctx.font = "36px Arial";
-        ctx.fillText("Game Over", 150, canvas.height / 2);
-      }
+      requestAnimationFrame(update);
     }
 
-    setInterval(() => {
-      if (!gameOver) createPipe();
-    }, 2000);
+    let pipeInterval;
 
-    birdImg.onload = () => {
+    function startGame() {
+      document.getElementById("startScreen").style.display = "none";
+      gameStarted = true;
+      gameOver = false;
+      score = 0;
+      pipes = [];
+      bird.y = canvas.height / 2;
+      bird.velocity = 0;
+
+      pipeInterval = setInterval(() => {
+        if (!gameOver) createPipe();
+      }, 2000);
+
       update();
-    };
+    }
+
+    function endGame() {
+      gameOver = true;
+      gameStarted = false;
+      clearInterval(pipeInterval);
+      document.getElementById("finalScore").innerText = score;
+      document.getElementById("gameOverScreen").style.display = "flex";
+    }
+
+    function restartGame() {
+      document.getElementById("gameOverScreen").style.display = "none";
+      startGame();
+    }
+
+    // Make canvas fullscreen on resize
+    window.addEventListener("resize", () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    });
   </script>
 </body>
 </html>
