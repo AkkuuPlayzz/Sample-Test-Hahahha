@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Catch The Box Game</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: Arial, sans-serif;
+      background: #1e1e2f;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    h1 {
+      margin-top: 20px;
+    }
+
+    #gameArea {
+      position: relative;
+      width: 90vw;
+      height: 70vh;
+      border: 3px solid #fff;
+      margin-top: 30px;
+      background-color: #2c2f4a;
+      overflow: hidden;
+    }
+
+    #box {
+      width: 50px;
+      height: 50px;
+      background-color: #ff4b2b;
+      position: absolute;
+      cursor: pointer;
+      border-radius: 8px;
+      transition: 0.2s;
+    }
+
+    #scoreBoard {
+      margin-top: 20px;
+      font-size: 1.5rem;
+    }
+
+    #startBtn {
+      padding: 10px 30px;
+      font-size: 1.2rem;
+      background: #00b894;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+
+    #startBtn:hover {
+      background-color: #00cec9;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Catch The Box 🎯</h1>
+  <button id="startBtn" onclick="startGame()">Start Game</button>
+  <div id="scoreBoard">Score: 0 | Time Left: 30s</div>
+  <div id="gameArea">
+    <div id="box" onclick="boxClicked()"></div>
+  </div>
+
+  <script>
+    let score = 0;
+    let timeLeft = 30;
+    let timer;
+    let gameRunning = false;
+
+    const box = document.getElementById('box');
+    const gameArea = document.getElementById('gameArea');
+    const scoreBoard = document.getElementById('scoreBoard');
+    const startBtn = document.getElementById('startBtn');
+
+    function randomPosition() {
+      const maxX = gameArea.clientWidth - 50;
+      const maxY = gameArea.clientHeight - 50;
+
+      const x = Math.floor(Math.random() * maxX);
+      const y = Math.floor(Math.random() * maxY);
+
+      box.style.left = x + 'px';
+      box.style.top = y + 'px';
+    }
+
+    function boxClicked() {
+      if (!gameRunning) return;
+      score++;
+      scoreBoard.textContent = `Score: ${score} | Time Left: ${timeLeft}s`;
+      randomPosition();
+    }
+
+    function startGame() {
+      score = 0;
+      timeLeft = 30;
+      gameRunning = true;
+      box.style.display = 'block';
+      randomPosition();
+
+      scoreBoard.textContent = `Score: ${score} | Time Left: ${timeLeft}s`;
+
+      timer = setInterval(() => {
+        timeLeft--;
+        scoreBoard.textContent = `Score: ${score} | Time Left: ${timeLeft}s`;
+
+        if (timeLeft <= 0) {
+          clearInterval(timer);
+          gameRunning = false;
+          box.style.display = 'none';
+          alert(`Time's up! 🕒\nYour Score: ${score}`);
+        }
+      }, 1000);
+    }
+
+    // Hide box at the start
+    box.style.display = 'none';
+  </script>
+
+</body>
+</html>
